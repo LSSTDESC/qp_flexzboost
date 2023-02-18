@@ -53,6 +53,9 @@ write_to = "src/qp_flexzboost/_version.py"
 [tool.pylint.'MESSAGES CONTROL']
 disable = """
     missing-module-docstring,
+    protected-access,
+    arguments-differ,
+    unused-argument
 """
 ignore-patterns = "^_.*" # Ignore files that start with an underscore, i.e. _version.py
 
