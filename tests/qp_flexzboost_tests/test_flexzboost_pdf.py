@@ -15,6 +15,6 @@ def test_initialize_flexzboost_pdf():
     test_basis_coef = BasisCoefs(test_coefs, test_basis_system, test_z_min,
                                  test_z_max, test_bump_threshold, test_sharpen_alpha)
 
-    test_fzb_pdf = FlexzboostGen(test_basis_coef)
+    test_fzb_pdf = FlexzboostGen(weights=test_coefs, basis_coefficients=test_basis_coef)
 
     assert test_fzb_pdf is not None

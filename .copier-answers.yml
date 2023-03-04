@@ -1,8 +1,8 @@
 # Changes here will be overwritten by Copier
 _commit: 1.2.0
 _src_path: gh://lincc-frameworks/python-project-template
-author_email: awoldag@uw.edu
-author_name: Drew Oldag
+author_email: lincc-frameworks-team@lists.lsst.org
+author_name: LINCC Frameworks
 module_name: qp_flexzboost
 preferred_linter: pylint
 project_name: qp_flexzboost
