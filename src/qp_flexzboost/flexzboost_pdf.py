@@ -24,7 +24,7 @@ class FlexzboostGen(Pdf_rows_gen):
 
     _support_mask = rv_continuous._support_mask
 
-    def __init__ (self, weights:List[List[float]], basis_coefficients:BasisCoefs, *args, **kwargs):
+    def __init__(self, weights:List[List[float]], basis_coefficients:BasisCoefs, *args, **kwargs):
         """_summary_
 
         Parameters
@@ -45,7 +45,7 @@ class FlexzboostGen(Pdf_rows_gen):
             PDF generator for FlexZBoost distributions
         """
 
-        self._basis_coefficients = basis_coefficients
+        self._basis_coefficients = self._clean_input_basis_coefficients(basis_coefficients)
         self._weights = np.asarray(weights)
 
         self._xvals = None
@@ -67,6 +67,35 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         return self._basis_coefficients
 
+    def _clean_input_basis_coefficients(self, basis_coefficients) -> BasisCoefs:
+        """This function will remove coefficients from the BasisCoef object to
+        avoid duplicating storage. 
+
+        It will also convert back to a `BasisCoef` object if `qp` has converted 
+        it to a 0-dimensional numpy array.
+
+        Parameters
+        ----------
+        basis_coefficients : BasisCoef (ideally
+            The input object to be cleaned and type-checked.
+
+        Returns
+        -------
+        BasisCoefs
+            Cleaned version of the input.
+        """
+
+        returned_basis_coefficients = basis_coefficients
+
+        # if qp machinery has converted this into a 0-dimensional array, extract the original object
+        if isinstance(basis_coefficients, np.ndarray):
+            returned_basis_coefficients = np.expand_dims(basis_coefficients, 0)[0]
+
+        # remove any coefs (i.e. weights) that are stored in the object.
+        returned_basis_coefficients.coefs = None
+
+        return returned_basis_coefficients
+
     def _calculate_yvals_if_needed(self, xvals:List[float]) -> None:
         """If self._yvals is None or the xvals have changed, reevaluate the y values.
 
@@ -77,7 +106,6 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         if self._yvals is None or xvals is not self._xvals:
             self._evaluate_basis_coefficients(xvals)
-
 
     def _evaluate_basis_coefficients(self, xvals:List[float]) -> None:
         """Assign the list of x values to self._xvals. Use that grid to evaluate
@@ -90,8 +118,18 @@ class FlexzboostGen(Pdf_rows_gen):
             The x-values to evaluate the analytical PDFs
         """
 
+        # ! Move these into these doc string as a notes section
+        # We'll keep a copy of the x values in this object. Note - FlexCode
+        # requires that the x values be reshaped, so we'll do that in the call
+        # to `.evaluate`, but we won't keep the reshaped x values in the object.
+
+        # The `.evaluate` method expects the `BasisCoefs` object to contain the
+        # output weights. So we'll add the weights back to the object for evaluation,
+        # and then remove them when we've completed `evaluation`.
         self._xvals = xvals
-        self._yvals = self._basis_coefficients.evaluate(self._xvals)
+        self._basis_coefficients.coefs = self._weights
+        self._yvals = self._basis_coefficients.evaluate(self._xvals.reshape(-1,1))
+        self._basis_coefficients.coefs = None
 
     def _compute_ycumul(self, xvals:List[float]) -> None:
         """Compute the cumulative values of y given an x grid
