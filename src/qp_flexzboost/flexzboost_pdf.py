@@ -1,4 +1,5 @@
 """This implements a PDF sub-class specifically for FlexZBoost"""
+from enum import Enum
 from typing import List
 
 import numpy as np
@@ -10,6 +11,21 @@ from qp.utils import interpolate_multi_x_y, interpolate_x_multi_y
 from scipy.stats import rv_continuous
 
 
+# pylint: disable=invalid-name
+class BasisSystem(Enum):
+    """_summary_
+
+    Parameters
+    ----------
+    Enum : _type_
+        _description_
+    """
+    cosine = 1
+    Fourier = 2
+    db4 = 3
+
+
+# pylint: disable=too-many-arguments,too-many-instance-attributes
 class FlexzboostGen(Pdf_rows_gen):
     """Distribution based on weighted basis functions output from FlexZBoost.
 
@@ -24,7 +40,9 @@ class FlexzboostGen(Pdf_rows_gen):
 
     _support_mask = rv_continuous._support_mask
 
-    def __init__(self, weights:List[List[float]], basis_coefficients:BasisCoefs, *args, **kwargs):
+    def __init__(self, weights:List[List[float]], basis_system_enum_value:int,
+                 z_min:float, z_max:float, bump_threshold:float,
+                sharpen_alpha:float, *args, **kwargs):
         """_summary_
 
         Parameters
@@ -45,15 +63,25 @@ class FlexzboostGen(Pdf_rows_gen):
             PDF generator for FlexZBoost distributions
         """
 
-        self._basis_coefficients = self._clean_input_basis_coefficients(basis_coefficients)
         self._weights = np.asarray(weights)
+        self._basis_system_enum_value = basis_system_enum_value
+        self._z_min = z_min
+        self._z_max = z_max
+        self._bump_threshold = bump_threshold
+        self._sharpen_alpha = sharpen_alpha
+
+        self._basis_coefficients = self._build_basis_coef_object()
 
         self._xvals = None
         self._yvals = None
         self._ycumul = None
 
         super().__init__(*args, **kwargs)
-        self._addmetadata('basis_coefficients', self._basis_coefficients)
+        self._addmetadata('basis_system_enum_value', self._basis_system_enum_value)
+        self._addmetadata('z_min', self._z_min)
+        self._addmetadata('z_max', self._z_max)
+        self._addmetadata('bump_threshold', self._bump_threshold)
+        self._addmetadata('sharpen_alpha', self._sharpen_alpha)
         self._addobjdata('weights', self._weights)
 
     @property
@@ -67,34 +95,42 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         return self._basis_coefficients
 
-    def _clean_input_basis_coefficients(self, basis_coefficients) -> BasisCoefs:
-        """This function will remove coefficients from the BasisCoef object to
-        avoid duplicating storage. 
+    def _build_basis_coef_object(self):
+        return BasisCoefs(coefs=None,
+                          basis_system=BasisSystem(self._basis_system_enum_value).name,
+                          z_min=self._z_min,
+                          z_max=self._z_max,
+                          bump_threshold=self._bump_threshold,
+                          sharpen_alpha=self._sharpen_alpha)
+    # def _clean_input_basis_coefficients(self, basis_coefficients) -> BasisCoefs:
+    #     """This function will remove coefficients from the BasisCoef object to
+    #     avoid duplicating storage.
 
-        It will also convert back to a `BasisCoef` object if `qp` has converted 
-        it to a 0-dimensional numpy array.
+    #     It will also convert back to a `BasisCoef` object if `qp` has converted
+    #     it to a 0-dimensional numpy array.
 
-        Parameters
-        ----------
-        basis_coefficients : BasisCoef (ideally
-            The input object to be cleaned and type-checked.
+    #     Parameters
+    #     ----------
+    #     basis_coefficients : BasisCoef (ideally
+    #         The input object to be cleaned and type-checked.
 
-        Returns
-        -------
-        BasisCoefs
-            Cleaned version of the input.
-        """
+    #     Returns
+    #     -------
+    #     BasisCoefs
+    #         Cleaned version of the input.
+    #     """
 
-        returned_basis_coefficients = basis_coefficients
+    #     returned_basis_coefficients = basis_coefficients
 
-        # if qp machinery has converted this into a 0-dimensional array, extract the original object
-        if isinstance(basis_coefficients, np.ndarray):
-            returned_basis_coefficients = np.expand_dims(basis_coefficients, 0)[0]
+    #     # if qp machinery has converted this into a 0-dimensional array,
+    #     # extract the original object
+    #     if isinstance(basis_coefficients, np.ndarray):
+    #         returned_basis_coefficients = np.expand_dims(basis_coefficients, 0)[0]
 
-        # remove any coefs (i.e. weights) that are stored in the object.
-        returned_basis_coefficients.coefs = None
+    #     # remove any coefs (i.e. weights) that are stored in the object.
+    #     returned_basis_coefficients.coefs = None
 
-        return returned_basis_coefficients
+    #     return returned_basis_coefficients
 
     def _calculate_yvals_if_needed(self, xvals:List[float]) -> None:
         """If self._yvals is None or the xvals have changed, reevaluate the y values.
@@ -225,8 +261,41 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         dct = super()._updated_ctor_param()
         dct['weights'] = self._weights
-        dct['basis_coefficients'] = self._basis_coefficients
+        dct['basis_system_enum_value'] = self._basis_system_enum_value
+        dct['z_min'] = self._z_min
+        dct['z_max'] = self._z_max
+        dct['bump_threshold'] = self._bump_threshold
+        dct['sharpen_alpha'] = self._sharpen_alpha
         return dct
+
+    @classmethod
+    def create_from_basis_coef_object(cls,
+                                      weights:List[List[float]],
+                                      basis_coefficients_object:BasisCoefs,
+                                      **kwargs):
+        """_summary_
+
+        Parameters
+        ----------
+        weights : List[List[float]]
+            _description_
+        basis_coefficients_object : BasisCoefs
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        generator_object = cls(
+            weights=weights,
+            basis_system_enum_value=BasisSystem[basis_coefficients_object.basis_system].value,
+            z_min=basis_coefficients_object.z_min,
+            z_max=basis_coefficients_object.z_max,
+            bump_threshold=basis_coefficients_object.bump_threshold,
+            sharpen_alpha=basis_coefficients_object.sharpen_alpha)
+
+        return generator_object(**kwargs)
 
     @classmethod
     def get_allocation_kwds(cls, npdf, **kwargs):
@@ -260,6 +329,7 @@ class FlexzboostGen(Pdf_rows_gen):
         Add this classes mappings to the conversion dictionary
         """
         cls._add_creation_method(cls.create, None)
+        cls._add_creation_method(cls.create_from_basis_coef_object, 'basis_coef_object')
 
     @classmethod
     def make_test_data(cls):
@@ -268,5 +338,6 @@ class FlexzboostGen(Pdf_rows_gen):
 
 
 flexzboost = FlexzboostGen.create
+flexzboost_create_from_basis_coef_object = FlexzboostGen.create_from_basis_coef_object
 
 add_class(FlexzboostGen)
