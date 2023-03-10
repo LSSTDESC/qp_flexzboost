@@ -47,6 +47,7 @@ class FlexzboostGen(Pdf_rows_gen):
 
         Parameters
         ----------
+        # ! Need to update the parameter list here.
         weights : List[List[float]]
             A list of lists were each element is a floating point value. The weights
             represent the contribution of each basis function to the final PDF.
@@ -76,6 +77,9 @@ class FlexzboostGen(Pdf_rows_gen):
         self._yvals = None
         self._ycumul = None
 
+        # kwargs['shape'] is used to by the parent class to define the total
+        # number of PDFs stored in this generator object.
+        kwargs['shape'] = self._weights.shape[:-1]
         super().__init__(*args, **kwargs)
         self._addmetadata('basis_system_enum_value', self._basis_system_enum_value)
         self._addmetadata('z_min', self._z_min)
@@ -83,6 +87,61 @@ class FlexzboostGen(Pdf_rows_gen):
         self._addmetadata('bump_threshold', self._bump_threshold)
         self._addmetadata('sharpen_alpha', self._sharpen_alpha)
         self._addobjdata('weights', self._weights)
+
+    @property
+    def basis_system_enum(self)->BasisSystem:
+        """Return the BasisSystem enum for this object.
+
+        Returns
+        -------
+        BasisSystem
+            The BasisSystem enum that defines the basis system used for these results.
+        """
+        return BasisSystem(self._basis_system_enum_value)
+
+    @property
+    def z_min(self)->float:
+        """Return the minimum z value used for the results stored in this object.
+
+        Returns
+        -------
+        float
+            Minimum z value used to predict these results
+        """
+        return self._z_min
+
+    @property
+    def z_max(self)->float:
+        """Return the maximum z value used for the results stored in this object.
+
+        Returns
+        -------
+        float
+            Maximum z value used to predict these results
+        """
+        return self._z_max
+
+    @property
+    def bump_threshold(self)->float:
+        """Return the bump threshold used for the results stored in this object.
+
+        Returns
+        -------
+        float
+            Bump thresholdd value used to predict these results
+        """
+        return self._bump_threshold
+
+    @property
+    def sharpen_alpha(self)->float:
+        """Return the sharpen alpha used for the results stored in this object.
+
+        Returns
+        -------
+        float
+            Sharpen alpha value used to predict these results
+        """
+        return self._sharpen_alpha
 
     @property
     def basis_coefficients(self)->BasisCoefs:
@@ -102,35 +161,6 @@ class FlexzboostGen(Pdf_rows_gen):
                           z_max=self._z_max,
                           bump_threshold=self._bump_threshold,
                           sharpen_alpha=self._sharpen_alpha)
-    # def _clean_input_basis_coefficients(self, basis_coefficients) -> BasisCoefs:
-    #     """This function will remove coefficients from the BasisCoef object to
-    #     avoid duplicating storage.
-
-    #     It will also convert back to a `BasisCoef` object if `qp` has converted
-    #     it to a 0-dimensional numpy array.
-
-    #     Parameters
-    #     ----------
-    #     basis_coefficients : BasisCoef (ideally
-    #         The input object to be cleaned and type-checked.
-
-    #     Returns
-    #     -------
-    #     BasisCoefs
-    #         Cleaned version of the input.
-    #     """
-
-    #     returned_basis_coefficients = basis_coefficients
-
-    #     # if qp machinery has converted this into a 0-dimensional array,
-    #     # extract the original object
-    #     if isinstance(basis_coefficients, np.ndarray):
-    #         returned_basis_coefficients = np.expand_dims(basis_coefficients, 0)[0]
-
-    #     # remove any coefs (i.e. weights) that are stored in the object.
-    #     returned_basis_coefficients.coefs = None
-
-    #     return returned_basis_coefficients
 
     def _calculate_yvals_if_needed(self, xvals:List[float]) -> None:
         """If self._yvals is None or the xvals have changed, reevaluate the y values.
@@ -152,16 +182,19 @@ class FlexzboostGen(Pdf_rows_gen):
         ----------
         xvals : List[float]
             The x-values to evaluate the analytical PDFs
+
+        Notes
+        -----
+        We'll maintain a copy of the x values in memory for this object, but it
+        won't be stored to disk.
+
+        FlexCode requires that the x values be reshaped, we'll do that in the call
+        to `.evaluate`, but we won't keep the reshaped x values in memory.
+
+        The `.evaluate` method expects the `BasisCoefs` object to contain the
+        output weights. So we'll add the weights back to the object for evaluation,
+        and then remove them when we've completed `evaluation`.
         """
-
-        # ! Move these into these doc string as a notes section
-        # We'll keep a copy of the x values in this object. Note - FlexCode
-        # requires that the x values be reshaped, so we'll do that in the call
-        # to `.evaluate`, but we won't keep the reshaped x values in the object.
-
-        # The `.evaluate` method expects the `BasisCoefs` object to contain the
-        # output weights. So we'll add the weights back to the object for evaluation,
-        # and then remove them when we've completed `evaluation`.
         self._xvals = xvals
         self._basis_coefficients.coefs = self._weights
         self._yvals = self._basis_coefficients.evaluate(self._xvals.reshape(-1,1))
@@ -272,20 +305,28 @@ class FlexzboostGen(Pdf_rows_gen):
     def create_from_basis_coef_object(cls,
                                       weights:List[List[float]],
                                       basis_coefficients_object:BasisCoefs,
-                                      **kwargs):
-        """_summary_
+                                      **kwargs) -> Pdf_rows_gen:
+        """This is a convenience method that allows the user to define a generator
+        by passing a `BasisCoefs` object, instead of the typical 5 additional
+        values.
 
         Parameters
         ----------
         weights : List[List[float]]
-            _description_
-        basis_coefficients_object : BasisCoefs
-            _description_
+            A list of lists were each element is a floating point value. The weights
+            represent the contribution of each basis function to the final PDF.
+            The shape of `weights` should be N x b, where N = number of PDFs
+            and b = number of basis functions.
+
+        basis_coefficients : BasisCoefs
+            An object that contains the FlexZBoost output weights as well as the
+            parameters required to define the set of basis functions.
 
         Returns
         -------
-        _type_
-            _description_
+        FlexzboostGen
+            Returns an instance of this class. Note that FlexzboostGen is a subclass
+            of Pdf_rows_gen, the return type defined in the method signature.
         """
         generator_object = cls(
             weights=weights,
@@ -299,19 +340,27 @@ class FlexzboostGen(Pdf_rows_gen):
 
     @classmethod
     def get_allocation_kwds(cls, npdf, **kwargs):
-        """_summary_
+        """Return the keywords necessary to create an 'empty' hdf5 file with npdf entries
+        for iterative file write out. We only need to allocate the objdata columns, as
+        the metadata can be written when we finalize the file.
 
         Parameters
         ----------
-        npdf : _type_
-            _description_
+        npdf : int
+            The total number of pdfs that will be written out
 
         Returns
         -------
         _type_
             _description_
         """
-        return super().get_allocation_kwds(npdf, **kwargs)
+        try:
+            weights = kwargs['weights']
+        except ValueError:
+            print("Required argument `weights` was not included in kwargs")
+
+        num_weights = np.shape(weights)[-1]
+        return {"weights", ((npdf, num_weights), 'f4')}
 
     @classmethod
     def plot_native(cls, pdf, **kwargs):
