@@ -6,9 +6,8 @@ import os
 import numpy as np
 import pytest
 import qp
-from qp import test_data
 from qp.plotting import init_matplotlib
-from qp.test_data import TEST_XVALS, XARRAY, XBINS, YARRAY
+from qp.test_data import QUANTS
 from qp.test_funcs import assert_all_close, assert_all_small, build_ensemble
 
 from qp_flexzboost.flexzboost_pdf import FlexzboostGen
@@ -49,7 +48,6 @@ class TestEnsembleFunctions():
         """Ensure that the ensemble was properly built"""
         assert isinstance(flexzboost_ensemble.gen_obj, FlexzboostGen)
 
-    @pytest.mark.skip(reason="There's a problem here currently")
     def test_can_create_pdf(self, flexzboost_ensemble, flexzboost_test_data):
         xpts = flexzboost_test_data['test_xvals']
         pdfs = flexzboost_ensemble.pdf(xpts)
@@ -58,7 +56,6 @@ class TestEnsembleFunctions():
         with np.errstate(all='ignore'):
             assert np.allclose(np.log(pdfs), logpdfs, atol=1e-9)
 
-    @pytest.mark.skip(reason="There's a problem here currently")
     def test_can_create_cdf(self, flexzboost_ensemble, flexzboost_test_data):
         xpts = flexzboost_test_data['test_xvals']
         cdfs = flexzboost_ensemble.cdf(xpts)
@@ -72,50 +69,73 @@ class TestEnsembleFunctions():
         if hasattr(flexzboost_ensemble.gen_obj, 'npdf'):
             assert flexzboost_ensemble.npdf == flexzboost_ensemble.gen_obj.npdf
 
-    @pytest.mark.skip(reason="There's a problem here currently")
     def test_can_convert_to_interp(self, flexzboost_ensemble):
-        interp_ensemble = flexzboost_ensemble.convert_to(qp.interp_gen, np.linspace(0,3,100))
+        interp_ensemble = flexzboost_ensemble.convert_to(qp.interp_gen, xvals=np.linspace(0,3,100))
+        assert isinstance(interp_ensemble.dist, qp.interp_pdf.interp_gen)
 
-    #     binw = xpts[1:] - xpts[0:-1]
-    #     check_cdf = ((pdfs[:,0:-1] + pdfs[:,1:]) * binw /2).cumsum(axis=1) - cdfs[:,1:]
-    #     assert_all_small(check_cdf, atol=5e-2, test_name="cdf")
+    def test_pdf_sum_matches_cdf(self, flexzboost_ensemble, flexzboost_test_data):
+        xpts = flexzboost_test_data['test_xvals']
+        pdfs = flexzboost_ensemble.pdf(xpts)
+        cdfs = flexzboost_ensemble.cdf(xpts)
 
-    #     hist = ens.histogramize(xpts)[1]
-    #     hist_check = ens.frozen.histogramize(xpts)[1]
-    #     assert_all_small(hist-hist_check, atol=1e-5, test_name="hist")
+        binw = xpts[1:] - xpts[0:-1]
+        check_cdf = ((pdfs[:,0:-1] + pdfs[:,1:]) * binw /2).cumsum(axis=1) - cdfs[:,1:]
+        assert_all_small(check_cdf, atol=5e-2, test_name="cdf")
 
-    #     ppfs = ens.ppf(test_data.QUANTS)
-    #     check_ppf = ens.cdf(ppfs) - test_data.QUANTS
-    #     assert_all_small(check_ppf, atol=2e-2, test_name="ppf")
+    def test_histogramization(self, flexzboost_ensemble, flexzboost_test_data):
+        xpts = flexzboost_test_data['test_xvals']
+        hist = flexzboost_ensemble.histogramize(xpts)[1]
+        hist_check = flexzboost_ensemble.frozen.histogramize(xpts)[1]
+        assert_all_small(hist-hist_check, atol=1e-5, test_name="hist")
 
-    #     sfs = ens.sf(xpts)
-    #     check_sf = sfs + cdfs
-    #     assert_all_small(check_sf-1, atol=2e-2, test_name="sf")
+    @pytest.mark.skip(reason="This doesn't work right now because ppf doesn't work")
+    def test_can_create_ppf(self, flexzboost_ensemble, flexzboost_test_data):
+        ppfs = flexzboost_ensemble.ppf(QUANTS)
+        check_ppf = flexzboost_ensemble.cdf(ppfs) - QUANTS
+        assert_all_small(check_ppf, atol=2e-2, test_name="ppf")
 
-    #     _ = ens.isf(test_data.QUANTS)
-    #     check_isf = ens.cdf(ppfs) + test_data.QUANTS[::-1]
-    #     assert_all_small(check_isf-1, atol=2e-2, test_name="isf")
+    def test_survival_function(self, flexzboost_ensemble, flexzboost_test_data):
+        xpts = flexzboost_test_data['test_xvals']
+        sfs = flexzboost_ensemble.sf(xpts)
+        cdfs = flexzboost_ensemble.cdf(xpts)
+        check_sf = sfs + cdfs
+        assert_all_small(check_sf-1, atol=2e-2, test_name="sf")
 
-    #     samples = ens.rvs(size=1000)
-    #     assert samples.shape[0] == ens.frozen.npdf
-    #     assert samples.shape[1] == 1000
+    @pytest.mark.skip(reason="This doesn't work right now because ppf doesn't work")
+    def test_inverse_survival_function(self, flexzboost_ensemble, flexzboost_test_data):
+        ifs = flexzboost_ensemble.isf(QUANTS)
+        ppfs = flexzboost_ensemble.ppf(QUANTS)
+        check_isf = flexzboost_ensemble.cdf(ppfs) + QUANTS[::-1]
+        assert_all_small(check_isf-1, atol=2e-2, test_name="isf")
 
-    #     median = ens.median()
-    #     mean = ens.mean()
-    #     var = ens.var()
-    #     std = ens.std()
+    @pytest.mark.skip(reason="This doesn't work right now because PPF doesn't work")
+    def test_random_variates_size(self, flexzboost_ensemble):
+        samples = flexzboost_ensemble.rvs(size=1000)
+        assert samples.shape[0] == flexzboost_ensemble.frozen.npdf
+        assert samples.shape[1] == 1000
+
+    @pytest.mark.skip(reason="This doesn't work right now because ppf doesn't work")
+    def test_basic_metrics(self, flexzboost_ensemble, flexzboost_test_data):
+        xpts = flexzboost_test_data['test_xvals']
+
+        median = flexzboost_ensemble.median()
+        mean = flexzboost_ensemble.mean() # specifically this is failing
+        var = flexzboost_ensemble.var()
+        std = flexzboost_ensemble.std()
+
+    # Entropy doesn't seem to work
     #     entropy = ens.entropy()
 
-    #     _ = ens.stats()
-    #     modes = ens.mode(xpts)
+        _ = flexzboost_ensemble.stats()
+        modes = flexzboost_ensemble.mode(xpts)
 
-    #     assert median.size == ens.npdf
-    #     assert mean.size == ens.npdf
-    #     assert np.std(mean) > 1e-8
-    #     assert var.size == ens.npdf
-    #     assert std.size == ens.npdf
-    #     assert entropy.size == ens.npdf
-    #     assert modes.size == ens.npdf
+        assert median.size == flexzboost_ensemble.npdf
+        assert mean.size == flexzboost_ensemble.npdf
+        assert np.std(mean) > 1e-8
+        assert var.size == flexzboost_ensemble.npdf
+        assert std.size == flexzboost_ensemble.npdf
+        # assert entropy.size == flexzboost_ensemble.npdf
+        assert modes.size == flexzboost_ensemble.npdf
 
     #     integral = ens.integrate(limits=(ens.gen_obj.a, ens.gen_obj.a))
     #     interval = ens.interval(0.05)

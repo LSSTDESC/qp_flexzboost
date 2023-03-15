@@ -10,6 +10,9 @@ from qp.plotting import get_axes_and_xlims, plot_pdf_on_axes
 from qp.utils import interpolate_multi_x_y, interpolate_x_multi_y
 from scipy.stats import rv_continuous
 
+from qp_flexzboost.util import (CASE_2D, CASE_FACTOR, CASE_FLAT, CASE_PRODUCT,
+                                get_eval_case)
+
 
 # pylint: disable=invalid-name
 class BasisSystem(Enum):
@@ -239,7 +242,8 @@ class FlexzboostGen(Pdf_rows_gen):
             The x-values to evaluate the cumulative y value
         """
         # Calculate yvals for the given xvals if needed
-        self._calculate_yvals_if_needed(xvals)
+        # self._calculate_yvals_if_needed(xvals)
+        self._evaluate_basis_coefficients(xvals)
 
         # Do the magic to calculate cumulative values of y
         copy_shape = np.array(self._yvals.shape)
@@ -249,6 +253,7 @@ class FlexzboostGen(Pdf_rows_gen):
                                         0.5 * np.add(self._yvals[:,1:],
                                                      self._yvals[:,:-1]), axis=1)
 
+#! Need to update the type hint and doc string here since x can be several different shapes
     def _pdf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical PDFs, evaluated on the grid, `x`.
 
@@ -267,11 +272,14 @@ class FlexzboostGen(Pdf_rows_gen):
             the resulting y-values corresponding to the input x-values.
         """
         # Calculate yvals for the given x's, if needed
-        self._calculate_yvals_if_needed(x)
+        case_idx, xx, rr = get_eval_case(x, row)
+        if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
+            self._calculate_yvals_if_needed(xx)
+            return self._yvals.ravel()
+        else:
+            raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
-        return interpolate_x_multi_y(x, row, self._xvals, self._yvals,
-                                     bounds_error=False, fill_value=0.).ravel()
-
+#! Need to update the type hint and doc string here since x can be several different shapes
     def _cdf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical CDF, evaluated on the grid, `x`.
 
@@ -289,12 +297,21 @@ class FlexzboostGen(Pdf_rows_gen):
             the outer lists is a single CDF. The elements of the inner list are
             the resulting y-values corresponding to the input x-values.
         """
-        if self._ycumul is None:
-            self._compute_ycumul(x)
+        # if self._ycumul is None:
+        case_idx, xx, rr = get_eval_case(x, row)
+        if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
+            self._compute_ycumul(xx)
+        elif case_idx == CASE_FLAT:
+            xx = np.reshape(xx, (self.npdf, -1))
+            self._compute_ycumul(xx)
+            print("CASE_FLAT")
+        else:
+            print("CASE_2D")
+            raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
-        return interpolate_x_multi_y(x, row, self._xvals, self._ycumul,
-                                     bounds_error=False, fill_value=(0.,1.)).ravel()
+        return self._ycumul.ravel()
 
+#! Need to update the type hint and doc string here since x can be several different shapes
     def _ppf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical PPF, evaluated on the grid, `x`.
 
@@ -312,11 +329,29 @@ class FlexzboostGen(Pdf_rows_gen):
             the outer lists is a single PPF. The elements of the inner list are
             the resulting y-values corresponding to the input x-values.
         """
-        if self._ycumul is None:  # pragma: no cover
-            self._compute_ycumul(x)
 
-        return interpolate_multi_x_y(x, row, self._ycumul, self._xvals,
-            bounds_error=False, fill_value=(min(x), max(x))).ravel()
+        #! This section isn't working correctly at all.
+        # To make it work, we'll need to do something else. Perhaps it would be 
+        # best to evaluate the CDF on a predefined grid, then interpolate for
+        # the x values provided - which will always be in the range (0,1).
+
+
+        # self._xvals = np.linspace(self._z_min, self._z_max, 100)
+        # self._calculate_yvals_if_needed(self._xvals)
+
+        # case_idx, xx, rr = get_eval_case(x, row)
+        # if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
+        #     True
+        # elif case_idx == CASE_FLAT:
+        #     # xx = np.reshape(xx, (self.npdf, -1))
+        #     # print("CASE_FLAT")
+        #     True
+        # else:
+        #     print("CASE_2D")
+        #     raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
+
+        # return interpolate_multi_x_y(xx, rr, self._ycumul, self._xvals,
+        #     bounds_error=False, fill_value=(min(x), max(x))).ravel()
 
     def _updated_ctor_param(self):
         """Specify the constructor parameters. This is required by scipy in order
