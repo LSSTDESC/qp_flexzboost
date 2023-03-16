@@ -126,6 +126,7 @@ class TestEnsembleFunctions():
         median = flexzboost_ensemble.median()
         assert median.size == flexzboost_ensemble.npdf
 
+    @pytest.mark.skip(reason="Slow test, somewhat redundant")
     def test_basic_mean(self, flexzboost_ensemble):
         """This is a long running test. >45 seconds. Ensure that mean works."""
         mean = flexzboost_ensemble.mean()
