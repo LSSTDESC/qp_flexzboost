@@ -7,11 +7,9 @@ from flexcode.basis_functions import BasisCoefs
 from qp.factory import add_class
 from qp.pdf_gen import Pdf_rows_gen
 from qp.plotting import get_axes_and_xlims, plot_pdf_on_axes
-from qp.utils import interpolate_multi_x_y, interpolate_x_multi_y
+from qp.utils import (CASE_FACTOR, CASE_PRODUCT, get_eval_case,
+                      interpolate_multi_x_y)
 from scipy.stats import rv_continuous
-
-from qp_flexzboost.util import (CASE_2D, CASE_FACTOR, CASE_FLAT, CASE_PRODUCT,
-                                get_eval_case)
 
 
 # pylint: disable=invalid-name
@@ -230,6 +228,12 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         self._xvals = xvals
         self._basis_coefficients.coefs = self._weights
+
+        #! I think that `evaluate` will accept a 2d array of values where each row
+        # is a PDF and each column is an x value) But for now, let's stick with
+        # the simple case of one set of x values for all PDFs. Ultimately we
+        # might need to do something different with the self._xvals.reshape(-1,1)
+
         self._yvals = self._basis_coefficients.evaluate(self._xvals.reshape(-1,1))
         self._basis_coefficients.coefs = None
 
@@ -239,10 +243,8 @@ class FlexzboostGen(Pdf_rows_gen):
         Parameters
         ----------
         xvals : List[float]
-            The x-values to evaluate the cumulative y value
+            The x-values to evaluate the cumulative y value.
         """
-        # Calculate yvals for the given xvals if needed
-        # self._calculate_yvals_if_needed(xvals)
         self._evaluate_basis_coefficients(xvals)
 
         # Do the magic to calculate cumulative values of y
@@ -272,14 +274,13 @@ class FlexzboostGen(Pdf_rows_gen):
             the resulting y-values corresponding to the input x-values.
         """
         # Calculate yvals for the given x's, if needed
-        case_idx, xx, rr = get_eval_case(x, row)
+        case_idx, xx, _ = get_eval_case(x, row)
         if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
             self._calculate_yvals_if_needed(xx)
             return self._yvals.ravel()
-        else:
-            raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
-#! Need to update the type hint and doc string here since x can be several different shapes
+        raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
+
     def _cdf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical CDF, evaluated on the grid, `x`.
 
@@ -297,21 +298,14 @@ class FlexzboostGen(Pdf_rows_gen):
             the outer lists is a single CDF. The elements of the inner list are
             the resulting y-values corresponding to the input x-values.
         """
-        # if self._ycumul is None:
-        case_idx, xx, rr = get_eval_case(x, row)
+        case_idx, xx, _ = get_eval_case(x, row)
         if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
             self._compute_ycumul(xx)
-        elif case_idx == CASE_FLAT:
-            xx = np.reshape(xx, (self.npdf, -1))
-            self._compute_ycumul(xx)
-            print("CASE_FLAT")
         else:
-            print("CASE_2D")
             raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
         return self._ycumul.ravel()
 
-#! Need to update the type hint and doc string here since x can be several different shapes
     def _ppf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical PPF, evaluated on the grid, `x`.
 
@@ -330,28 +324,11 @@ class FlexzboostGen(Pdf_rows_gen):
             the resulting y-values corresponding to the input x-values.
         """
 
-        #! This section isn't working correctly at all.
-        # To make it work, we'll need to do something else. Perhaps it would be 
-        # best to evaluate the CDF on a predefined grid, then interpolate for
-        # the x values provided - which will always be in the range (0,1).
+        self._xvals = np.linspace(self._z_min, self._z_max, 100)
+        self._compute_ycumul(self._xvals)
 
-
-        # self._xvals = np.linspace(self._z_min, self._z_max, 100)
-        # self._calculate_yvals_if_needed(self._xvals)
-
-        # case_idx, xx, rr = get_eval_case(x, row)
-        # if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
-        #     True
-        # elif case_idx == CASE_FLAT:
-        #     # xx = np.reshape(xx, (self.npdf, -1))
-        #     # print("CASE_FLAT")
-        #     True
-        # else:
-        #     print("CASE_2D")
-        #     raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
-
-        # return interpolate_multi_x_y(xx, rr, self._ycumul, self._xvals,
-        #     bounds_error=False, fill_value=(min(x), max(x))).ravel()
+        return interpolate_multi_x_y(x, row, self._ycumul, self._xvals,
+            bounds_error=False, fill_value=(np.min(x), np.max(x))).ravel()
 
     def _updated_ctor_param(self):
         """Specify the constructor parameters. This is required by scipy in order
@@ -531,13 +508,17 @@ class FlexzboostGen(Pdf_rows_gen):
         SHARPEN_ALPHA = 1.2
         X_VALS = np.linspace(Z_MIN, Z_MAX, 100)
 
-        cls.test_data = dict(
-                gen_func=flexzboost,
-                ctor_data=dict(weights=WEIGHTS, basis_system_enum_value=BasisSystem.cosine,
-                                z_min=Z_MIN, z_max=Z_MAX, bump_threshold=BUMP_THRESHOLD,
-                                sharpen_alpha=SHARPEN_ALPHA),
-                test_xvals=X_VALS
-        )
+        cls.test_data = {
+                "gen_func": flexzboost,
+                "ctor_data": {"weights": WEIGHTS,
+                           "basis_system_enum_value": BasisSystem.cosine.value, 
+                           "z_min": Z_MIN,
+                           "z_max": Z_MAX,
+                           "bump_threshold": BUMP_THRESHOLD,
+                           "sharpen_alpha": SHARPEN_ALPHA},
+                "test_xvals": X_VALS,
+                "weights": WEIGHTS
+        }
 
 
 flexzboost = FlexzboostGen.create

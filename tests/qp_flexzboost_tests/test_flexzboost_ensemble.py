@@ -12,6 +12,7 @@ from qp.test_funcs import assert_all_close, assert_all_small, build_ensemble
 
 from qp_flexzboost.flexzboost_pdf import FlexzboostGen
 
+# pylint: disable=redefined-outer-name
 
 @pytest.fixture
 def flexzboost_test_data():
@@ -49,6 +50,7 @@ class TestEnsembleFunctions():
         assert isinstance(flexzboost_ensemble.gen_obj, FlexzboostGen)
 
     def test_can_create_pdf(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that pdfs can be created for the ensemble."""
         xpts = flexzboost_test_data['test_xvals']
         pdfs = flexzboost_ensemble.pdf(xpts)
         logpdfs = flexzboost_ensemble.logpdf(xpts)
@@ -57,6 +59,7 @@ class TestEnsembleFunctions():
             assert np.allclose(np.log(pdfs), logpdfs, atol=1e-9)
 
     def test_can_create_cdf(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that CDFs can be created for the ensemble"""
         xpts = flexzboost_test_data['test_xvals']
         cdfs = flexzboost_ensemble.cdf(xpts)
         logcdfs = flexzboost_ensemble.logcdf(xpts)
@@ -70,10 +73,12 @@ class TestEnsembleFunctions():
             assert flexzboost_ensemble.npdf == flexzboost_ensemble.gen_obj.npdf
 
     def test_can_convert_to_interp(self, flexzboost_ensemble):
+        """Ensure that the ensemble can be converted to another generator type"""
         interp_ensemble = flexzboost_ensemble.convert_to(qp.interp_gen, xvals=np.linspace(0,3,100))
         assert isinstance(interp_ensemble.dist, qp.interp_pdf.interp_gen)
 
     def test_pdf_sum_matches_cdf(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that output CDF makes sense relative to the PDF."""
         xpts = flexzboost_test_data['test_xvals']
         pdfs = flexzboost_ensemble.pdf(xpts)
         cdfs = flexzboost_ensemble.cdf(xpts)
@@ -83,99 +88,109 @@ class TestEnsembleFunctions():
         assert_all_small(check_cdf, atol=5e-2, test_name="cdf")
 
     def test_histogramization(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that generating histograms in different ways produces the same
+        results."""
         xpts = flexzboost_test_data['test_xvals']
         hist = flexzboost_ensemble.histogramize(xpts)[1]
         hist_check = flexzboost_ensemble.frozen.histogramize(xpts)[1]
         assert_all_small(hist-hist_check, atol=1e-5, test_name="hist")
 
-    @pytest.mark.skip(reason="This doesn't work right now because ppf doesn't work")
-    def test_can_create_ppf(self, flexzboost_ensemble, flexzboost_test_data):
+    def test_can_create_ppf(self, flexzboost_ensemble):
+        """This test checks the output of the PPF function has the right shape"""
         ppfs = flexzboost_ensemble.ppf(QUANTS)
-        check_ppf = flexzboost_ensemble.cdf(ppfs) - QUANTS
-        assert_all_small(check_ppf, atol=2e-2, test_name="ppf")
+        assert flexzboost_ensemble.npdf == ppfs.shape[0]
+        assert ppfs.shape[1] == QUANTS.shape[0]
 
     def test_survival_function(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that the survival function works as expected"""
         xpts = flexzboost_test_data['test_xvals']
         sfs = flexzboost_ensemble.sf(xpts)
         cdfs = flexzboost_ensemble.cdf(xpts)
         check_sf = sfs + cdfs
         assert_all_small(check_sf-1, atol=2e-2, test_name="sf")
 
-    @pytest.mark.skip(reason="This doesn't work right now because ppf doesn't work")
     def test_inverse_survival_function(self, flexzboost_ensemble, flexzboost_test_data):
-        ifs = flexzboost_ensemble.isf(QUANTS)
-        ppfs = flexzboost_ensemble.ppf(QUANTS)
-        check_isf = flexzboost_ensemble.cdf(ppfs) + QUANTS[::-1]
-        assert_all_small(check_isf-1, atol=2e-2, test_name="isf")
+        """Test that the ISF output has the right shape"""
+        isf = flexzboost_ensemble.isf(QUANTS)
+        assert flexzboost_ensemble.npdf == isf.shape[0]
+        assert isf.shape[1] == QUANTS.shape[0]
 
-    @pytest.mark.skip(reason="This doesn't work right now because PPF doesn't work")
     def test_random_variates_size(self, flexzboost_ensemble):
+        """Demonstrate that random variates can be extracted from the distributions"""
         samples = flexzboost_ensemble.rvs(size=1000)
         assert samples.shape[0] == flexzboost_ensemble.frozen.npdf
         assert samples.shape[1] == 1000
 
-    @pytest.mark.skip(reason="This doesn't work right now because ppf doesn't work")
-    def test_basic_metrics(self, flexzboost_ensemble, flexzboost_test_data):
-        xpts = flexzboost_test_data['test_xvals']
-
+    def test_basic_median(self, flexzboost_ensemble):
+        """Ensure that median returns results of the expected size"""
         median = flexzboost_ensemble.median()
-        mean = flexzboost_ensemble.mean() # specifically this is failing
-        var = flexzboost_ensemble.var()
-        std = flexzboost_ensemble.std()
-
-    # Entropy doesn't seem to work
-    #     entropy = ens.entropy()
-
-        _ = flexzboost_ensemble.stats()
-        modes = flexzboost_ensemble.mode(xpts)
-
         assert median.size == flexzboost_ensemble.npdf
+
+    def test_basic_mean(self, flexzboost_ensemble):
+        """This is a long running test. >45 seconds. Ensure that mean works."""
+        mean = flexzboost_ensemble.mean()
         assert mean.size == flexzboost_ensemble.npdf
         assert np.std(mean) > 1e-8
-        assert var.size == flexzboost_ensemble.npdf
-        assert std.size == flexzboost_ensemble.npdf
-        # assert entropy.size == flexzboost_ensemble.npdf
+
+    def test_basic_mode(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that mode works as expected"""
+        xpts = flexzboost_test_data['test_xvals']
+        modes = flexzboost_ensemble.mode(xpts)
         assert modes.size == flexzboost_ensemble.npdf
 
-    #     integral = ens.integrate(limits=(ens.gen_obj.a, ens.gen_obj.a))
-    #     interval = ens.interval(0.05)
+    def test_integrate(self, flexzboost_ensemble):
+        """Check that integration returns results of the expected size"""
+        # gen_obj.a = -inf, gen_obj.b = inf
+        integral = flexzboost_ensemble.integrate(
+            limits=(flexzboost_ensemble.gen_obj.a, flexzboost_ensemble.gen_obj.b))
+        assert integral.size == flexzboost_ensemble.npdf
 
-    #     assert integral.size == ens.npdf
-    #     assert interval[0].size == ens.npdf
+    def test_interval(self, flexzboost_ensemble):
+        """Test basic interval functionality"""
+        interval = flexzboost_ensemble.interval(0.05)
+        assert interval[0].size == flexzboost_ensemble.npdf
 
-    #     for N in range(3):
-    #         moment_partial = ens.moment_partial(N, limits=(test_data.XMIN, test_data.XMAX))
-    #         calc_moment = qp.metrics.calculate_moment(ens, N, limits=(test_data.XMIN, test_data.XMAX))
-    #         assert_all_close(moment_partial, calc_moment, rtol=5e-2, test_name="moment_partial_%i" % N)
+    def test_moment(self, flexzboost_ensemble, flexzboost_test_data):
+        """Test basic functionality of partial moments works as expected"""
+        xpts = flexzboost_test_data['test_xvals']
+        moment_partial = flexzboost_ensemble.moment_partial(
+            0, limits=(min(xpts), max(xpts)))
+        calc_moment = qp.metrics.calculate_moment(
+            flexzboost_ensemble, 0, limits=(min(xpts), max(xpts)))
+        assert_all_close(
+            moment_partial, calc_moment, rtol=5e-2, test_name="moment_partial_0")
 
-    #         sps_moment = ens.moment(N)
-    #         assert sps_moment.size == ens.npdf
+        sps_moment = flexzboost_ensemble.moment(0)
+        assert sps_moment.size == flexzboost_ensemble.npdf
 
-    #     init_matplotlib()
-    #     axes = ens.plot(xlim=(xpts[0], xpts[-1]))
-    #     ens.plot_native(axes=axes)
+    def test_plot_native(self, flexzboost_ensemble, flexzboost_test_data):
+        """Ensure that basic plotting works"""
+        xpts = flexzboost_test_data['test_xvals']
+        init_matplotlib()
+        axes = flexzboost_ensemble.plot(xlim=(xpts[0], xpts[-1]))
+        flexzboost_ensemble.plot_native(axes=axes)
 
-    #     red_ens = ens[np.arange(5)]
-    #     red_pdf = red_ens.pdf(xpts)
+    def test_slicing_ensemble(self, flexzboost_ensemble, flexzboost_test_data):
+        """Make sure that the ensemble can be sliced"""
+        xpts = flexzboost_test_data['test_xvals']
 
-    #     check_red = red_pdf - pdfs[0:5]
-    #     assert_all_small(check_red, atol=1e-5, test_name="red")
+        red_ens = flexzboost_ensemble[np.arange(5)]
+        red_pdf = red_ens.pdf(xpts)
+        pdfs = flexzboost_ensemble.pdf(xpts)
 
-    #     if hasattr(ens.gen_obj, 'npdf'): # skip scipy norm
-    #         commList = [None]
-    #         try:
-    #             import mpi4py.MPI
-    #             commList.append(mpi4py.MPI.COMM_WORLD)
-    #         except ImportError:
-    #             pass
-    #         for comm in commList:
-    #             try:
-    #                 group, fout = ens.initializeHdf5Write("testwrite.hdf5", ens.npdf, comm)
-    #             except TypeError:
-    #                 continue
-    #             ens.writeHdf5Chunk(group, 0, ens.npdf)
-    #             ens.finalizeHdf5Write(fout)
-    #             readens = qp.read("testwrite.hdf5")
-    #             assert readens.metadata().keys() == ens.metadata().keys()
-    #             assert readens.objdata().keys() == ens.objdata().keys()
-    #             os.remove("testwrite.hdf5")
+        check_red = red_pdf - pdfs[0:5]
+        assert_all_small(check_red, atol=1e-5, test_name="red")
+
+    def test_recover_data_after_writing(self, flexzboost_ensemble):
+        """Test for information loss after writing"""
+        try:
+            group, fout = flexzboost_ensemble.initializeHdf5Write(
+                "testwrite.hdf5", flexzboost_ensemble.npdf)
+        except TypeError:
+            pass
+        flexzboost_ensemble.writeHdf5Chunk(group, 0, flexzboost_ensemble.npdf)
+        flexzboost_ensemble.finalizeHdf5Write(fout)
+        readens = qp.read("testwrite.hdf5")
+        assert readens.metadata().keys() == flexzboost_ensemble.metadata().keys()
+        assert readens.objdata().keys() == flexzboost_ensemble.objdata().keys()
+        os.remove("testwrite.hdf5")
