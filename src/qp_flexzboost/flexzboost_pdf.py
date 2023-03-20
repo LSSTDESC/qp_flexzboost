@@ -482,8 +482,8 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         try:
             weights = kwargs['weights']
-        except ValueError:
-            print("Required argument `weights` was not included in kwargs")
+        except KeyError as key_error:
+            raise KeyError("Required argument `weights` was not included in kwargs") from key_error
 
         num_weights = np.shape(weights)[-1]
         return {"weights", ((npdf, num_weights), 'f4')}
