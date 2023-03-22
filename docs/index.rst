@@ -10,3 +10,4 @@ Welcome to qp_flexzboost's documentation!
 
    Home page <self>
    API Reference <autoapi/index>
+   Notebooks <notebooks>
