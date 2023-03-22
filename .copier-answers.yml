@@ -1,9 +1,15 @@
 # Changes here will be overwritten by Copier
-_commit: 1.2.0
+_commit: v1.3.0
 _src_path: gh://lincc-frameworks/python-project-template
 author_email: lincc-frameworks-team@lists.lsst.org
 author_name: LINCC Frameworks
+create_example_module: false
+custom_install: true
+include_notebooks: true
 module_name: qp_flexzboost
+mypy_type_checking: none
 preferred_linter: pylint
+project_license: MIT
 project_name: qp_flexzboost
+use_gitlfs: none
 use_isort: true
