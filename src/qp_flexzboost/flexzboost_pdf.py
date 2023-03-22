@@ -80,12 +80,23 @@ class FlexzboostGen(Pdf_rows_gen):
         See the method `FlexzboostGen:create_from_basis_coef_object`.
         """
 
+        # kwargs['shape'] is used to by the parent class to define the total
+        # number of PDFs stored in this generator object.
+        kwargs['shape'] = np.asarray(weights).shape[:-1]
+        super().__init__(*args, **kwargs)
+
         self._weights = np.asarray(weights)
         self._basis_system_enum_value = basis_system_enum_value
         self._z_min = z_min
         self._z_max = z_max
-        self._bump_threshold = bump_threshold
-        self._sharpen_alpha = sharpen_alpha
+        self._bump_threshold = None
+        self._sharpen_alpha = None
+
+        # These two assignments all the use of property.setter functions, which
+        # encapsulate some type checking and will also update the parent class
+        # metadata as needed.
+        self.bump_threshold = bump_threshold
+        self.sharpen_alpha = sharpen_alpha
 
         self._basis_coefficients = self._build_basis_coef_object()
 
@@ -93,10 +104,6 @@ class FlexzboostGen(Pdf_rows_gen):
         self._yvals = None
         self._ycumul = None
 
-        # kwargs['shape'] is used to by the parent class to define the total
-        # number of PDFs stored in this generator object.
-        kwargs['shape'] = self._weights.shape[:-1]
-        super().__init__(*args, **kwargs)
         self._addmetadata('basis_system_enum_value', self._basis_system_enum_value)
         self._addmetadata('z_min', self._z_min)
         self._addmetadata('z_max', self._z_max)
@@ -148,6 +155,40 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         return self._bump_threshold
 
+    @bump_threshold.setter
+    def bump_threshold(self, new_bump_threshold):
+        """This is a setter for bump threshold that allows users to modify
+        the parameter on the fly without rerunning the model.
+
+        The conditional logic is a byproduct of the way that scipy will pass
+        values to the __init__ method when taking a slice of an ensemble containing
+        this generator.
+
+        `new_bump_threshold` can be passed in as a 0 dimensional
+        numpy array. For floats this is fine, but the comparison logic in Flexcode
+        breaks when a numpy 0 dimensional array (i.e. scalar) `None` value is passed in.
+        To account for this, we explicitly assign `None` when we detect a
+        None-like input.
+
+        Parameters
+        ----------
+        new_bump_threshold : float
+            The new bump threshold to use in the BasisCoefs object.
+        """
+
+        # We use the `==` comparison because Numpy will broadcast the contents
+        # of new_bump_threshold appropriately.
+        # pylint: disable-next=singleton-comparison
+        if new_bump_threshold == None:
+            self._bump_threshold = None
+        else:
+            self._bump_threshold = new_bump_threshold
+
+        # _addmetadata updates the parent class, so that slices into an ensemble
+        # will create new instances of this class with the correct values.
+        self._addmetadata('bump_threshold', self._bump_threshold)
+        self._update_basis_coef_object()
+
     @property
     def sharpen_alpha(self)->float:
         """Return the sharpen alpha used for the results stored in this object.
@@ -158,6 +199,40 @@ class FlexzboostGen(Pdf_rows_gen):
             Sharpen alpha value used to predict these results
         """
         return self._sharpen_alpha
+
+    @sharpen_alpha.setter
+    def sharpen_alpha(self, new_sharpen_alpha):
+        """This is a setter for sharpen alpha that allows users to modify
+        the parameter on the fly without rerunning the model.
+
+        The conditional logic is a byproduct of the way that scipy will pass
+        values to the __init__ method when taking a slice of an ensemble containing
+        this generator.
+
+        `new_sharpen_alpha` can be passed in as a 0 dimensional
+        numpy array. For floats this is fine, but the comparison logic in Flexcode
+        breaks when a numpy 0 dimensional array (i.e. scalar) `None` value is passed in.
+        To account for this, we explicitly assign `None` when we detect a
+        None-like input.
+
+        Parameters
+        ----------
+        new_sharpen_alpha : float
+            The new sharpen parameter to use in the BasisCoefs object.
+        """
+
+        # We use the `==` comparison because Numpy will broadcast the contents
+        # of new_sharpen_alpha appropriately.
+        # pylint: disable-next=singleton-comparison
+        if new_sharpen_alpha == None:
+            self._sharpen_alpha = None
+        else:
+            self._sharpen_alpha = new_sharpen_alpha
+
+        # _addmetadata updates the parent class, so that slices into an ensemble
+        # will create new instances of this class with the correct values.
+        self._addmetadata('sharpen_alpha', self._sharpen_alpha)
+        self._update_basis_coef_object()
 
     @property
     def basis_coefficients(self)->BasisCoefs:
@@ -185,6 +260,10 @@ class FlexzboostGen(Pdf_rows_gen):
                           z_max=self._z_max,
                           bump_threshold=self._bump_threshold,
                           sharpen_alpha=self._sharpen_alpha)
+
+    def _update_basis_coef_object(self):
+        """Simple method to update the `BasisCoefs` object 'in place'."""
+        self._basis_coefficients = self._build_basis_coef_object()
 
     def _calculate_yvals_if_needed(self, xvals:List[float]) -> None:
         """If self._yvals is None or the xvals have changed, reevaluate the y values.
@@ -255,7 +334,6 @@ class FlexzboostGen(Pdf_rows_gen):
                                         0.5 * np.add(self._yvals[:,1:],
                                                      self._yvals[:,:-1]), axis=1)
 
-#! Need to update the type hint and doc string here since x can be several different shapes
     def _pdf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical PDFs, evaluated on the grid, `x`.
 
@@ -404,8 +482,8 @@ class FlexzboostGen(Pdf_rows_gen):
         """
         try:
             weights = kwargs['weights']
-        except ValueError:
-            print("Required argument `weights` was not included in kwargs")
+        except KeyError as key_error:
+            raise KeyError("Required argument `weights` was not included in kwargs") from key_error
 
         num_weights = np.shape(weights)[-1]
         return {"weights", ((npdf, num_weights), 'f4')}
