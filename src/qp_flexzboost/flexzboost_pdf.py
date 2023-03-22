@@ -255,7 +255,7 @@ class FlexzboostGen(Pdf_rows_gen):
                                         0.5 * np.add(self._yvals[:,1:],
                                                      self._yvals[:,:-1]), axis=1)
 
-#! Need to update the type hint and doc string here since x can be several different shapes
+    # pylint: disable-next=arguments-differ
     def _pdf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical PDFs, evaluated on the grid, `x`.
 
@@ -281,6 +281,7 @@ class FlexzboostGen(Pdf_rows_gen):
 
         raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
+    # pylint: disable-next=arguments-differ
     def _cdf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical CDF, evaluated on the grid, `x`.
 
@@ -306,6 +307,7 @@ class FlexzboostGen(Pdf_rows_gen):
 
         return self._ycumul.ravel()
 
+    # pylint: disable-next=arguments-differ
     def _ppf(self, x:List[float], row:List[int]) -> List[List[float]]:
         """Return the numerical PPF, evaluated on the grid, `x`.
 
