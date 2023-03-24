@@ -18,7 +18,8 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "deprecated",
-    "FlexCode @ git+https://github.com/lee-group-cmu/FlexCode", # ! We'll want to update this dep when we finalize ownership of FlexCode.
+    "flexcode",
+    # "FlexCode @ git+https://github.com/lee-group-cmu/FlexCode", # ! We'll want to update this dep when we finalize ownership of FlexCode.
     "ipykernel", # Support for Jupyter notebooks
     "numpy >= 1.24",
     "qp-prob>=0.7.1", # The primary dependency
