@@ -2,6 +2,7 @@
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/lsstdesc/qp_flexzboost/smoke-test.yml?label=smoke%20test)
 ![Codecov](https://img.shields.io/codecov/c/github/lsstdesc/qp_flexzboost)
 [![Read the Docs](https://img.shields.io/readthedocs/qp-flexzboost)](https://qp-flexzboost.readthedocs.io/en/latest/index.html)
+
 [![Template](https://img.shields.io/badge/Template-LINCC%20Frameworks%20Python%20Project%20Template-brightgreen)](https://lincc-ppt.readthedocs.io/en/latest/)
 
 # qp_flexzboost

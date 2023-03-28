@@ -3,5 +3,6 @@ Notebooks
 
 .. toctree::
 
-    Primary Demonstration Notebook <notebooks/demo>
+    Minimal Getting Started <notebooks/minimal_notebook>
+    Detailed Examples <notebooks/demo>
     CDF Accuracy Exploration <notebooks/cdf_demonstration>
