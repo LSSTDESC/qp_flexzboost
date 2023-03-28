@@ -7,6 +7,6 @@ jupytext
 jupyter
 matplotlib
 numpy
-qp
-qp_flexzboost
-flexzboost
+qp-prob
+qp-flexzboost
+flexcode
