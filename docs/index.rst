@@ -14,6 +14,10 @@ It will typically be used as a transparent shim between
 `qp <https://github.com/LSSTDESC/qp>`_, and 
 `rail-flexzboost <https://github.com/LSSTDESC/rail_flexzboost>`_.
 
+For detailed comparison of the performance of this package relative to built in 
+``qp`` representations, please see the
+:doc:`performance comparison <../source/performance_comparison>`.
+
 Getting Started
 ---------------
 
@@ -57,5 +61,6 @@ Citations
    :hidden:
 
    Home page <self>
+   Performance Comparison <source/performance_comparison>
    API Reference <autoapi/index>
    Notebooks <notebooks>
