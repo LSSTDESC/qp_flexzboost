@@ -109,7 +109,7 @@ class TestEnsembleFunctions():
         check_sf = sfs + cdfs
         assert_all_small(check_sf-1, atol=2e-2, test_name="sf")
 
-    def test_inverse_survival_function(self, flexzboost_ensemble, flexzboost_test_data):
+    def test_inverse_survival_function(self, flexzboost_ensemble):
         """Test that the ISF output has the right shape"""
         isf = flexzboost_ensemble.isf(QUANTS)
         assert flexzboost_ensemble.npdf == isf.shape[0]
