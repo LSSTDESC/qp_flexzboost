@@ -32,6 +32,40 @@ distributions.
       - 8.1s +/- 0.2s
       - 8.1s +/- 0.1s
 
+Other considerations
+--------------------
+
+While additional parameters that will affect storage size come into play 
+(the size of the basis set, the resolution of the x grid provided, 
+the number of CDEs stored) the measurements shown in the table above 
+are derived from a reasonable set of parameters a user might select.
+
+Upon further exploration, it appears that XGBoost, the modeling tool that 
+``Flexcode`` uses, allows at most 38 basis functions. 
+Any basis functions requested beyond that will be ignored. 
+Thus for comparison above, the largest output file size for 20,449 distributions 
+will be approximately 3.3M for the ``qp_flexzboost`` representation.
+
+To probe the storage requirements for the baseline, the number of distributions 
+was held constant at 20,449, while varying the number of x values. 
+As expected, decreasing the number of x grid points from 301 to 101 (roughly 1/3) 
+reduced the storage by 1/3 to 16M. 
+Additionally, reducing this x grid points to 20 produced output files 3.3M in size.
+It is feasible to reduce the size further with fewer x values, however the 
+fidelity of the reconstructed distributions begins to suffer. 
+
+It is also important to note that ``qp_flexzboost`` represented distributions 
+allow the user to manipulate the post processing parameters without the need to 
+rerun the model - x,y interpolated representation do not permit that kind of 
+manipulation. 
+Additionally ``qp_flexzboost`` represented distributions are lossless, whereas
+the x,y interpolated representations become more lossy as the storage size 
+approaches that of ``qp_flexzboost``.
+
+Given these all of these considerations, it's unlikely that there are times when 
+the baseline x,y interpolated approach will make more sense as a storage 
+solution than ``qp_flexzboost``. 
+
 
 Additional context
 ------------------
@@ -50,8 +84,3 @@ Using ``qp_flexzboost``, we store only the ``Flexcode`` output basis function
 weights for each conditional density estimate. 
 This approach is lossless and there is minimal computational impact when 
 compared to the baseline.
-
-While additional parameters that will affect storage size come into play 
-(the size of the basis set, the resolution of the x grid provided, 
-the number of CDEs stored) the measurements shown in the table above 
-are derived from a reasonable set of parameters a user might select.
