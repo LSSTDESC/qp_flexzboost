@@ -22,15 +22,18 @@ distributions.
     * - Model estimation time
       - 17.4s +/- 0.3s
       - 16.8s +/- 0.1s
-    * - Extract all median and mode values
-      - 9.1s +/- 0.3s
+    * - Extract median values
+      - 0.7s +/- 0.1s
       - 9.1s +/- 0.2s
-    * - Plot all median values
+    * - Plot median values
       - 59ms +/- 3ms
       - 59ms +/- 3ms
     * - Convert to ``qp.histogram`` representation
-      - 8.1s +/- 0.2s
+      - 0.04s +/- 0.01s
       - 8.1s +/- 0.1s
+    * - Convert to ``qp.interp`` representation
+      - Already ``qp.interp``
+      - 10.6s +/- 0.1s
 
 Other considerations
 --------------------
@@ -62,10 +65,28 @@ Additionally ``qp_flexzboost`` represented distributions are lossless, whereas
 the x,y interpolated representations become more lossy as the storage size 
 approaches that of ``qp_flexzboost``.
 
-Given these all of these considerations, it's unlikely that there are times when 
-the baseline x,y interpolated approach will make more sense as a storage 
-solution than ``qp_flexzboost``. 
+The x,y interpolated representation is significantly more performant when 
+operating on the data. One potential workflow may be to store the data in the 
+native ``qp_flexzboost`` representation, and then convert to an interpolated 
+grid when performing operations on it.
 
+Converting the ``qp_flexzboost`` representation to x,y interpolated using with 
+a grid = ``np.linspace(0.0, 3.0, 301)`` (to match the baseline) took approximately 
+11 seconds. 
+
+Given these all of these considerations, it is up to the user to determine when 
+to use each storage representation.
+
+If compact storage is required, or if the ability to experiment with different 
+bump threshold or sharpening alpha parameters is needed, then using 
+``qp_flexzboost`` makes sense.
+
+Alternatively, if efficient storage is a lower priority compared to computation 
+speed, the x,y interpolated representation is a better choice.
+
+Finally, depending on the computation requirements, it may be practical to 
+store the data using the compact ``qp_flexzboost`` representation, then unpack 
+it into a x,y interpolated representation while working with it.
 
 Additional context
 ------------------
