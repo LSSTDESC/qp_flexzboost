@@ -7,6 +7,6 @@ jupytext
 jupyter
 matplotlib
 numpy
-qp-prob
+qp-prob[full]>=0.8.1
 qp-flexzboost
 flexcode
