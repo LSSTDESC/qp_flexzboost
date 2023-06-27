@@ -68,36 +68,18 @@ repos:
         files: ^(src|tests)/
 
 
-    # Analyze the src code style and report code that doesn't adhere.
-  - repo: local
+    # Analyze the code style and report code that doesn't adhere.
+  - repo: https://github.com/psf/black
+    rev: 23.1.0
     hooks:
-      - id: pylint
-        name: pylint (python files in src/)
-        entry: pylint
-        language: system
+      - id: black
         types: [python]
-        files: ^src/
-        args:
-          [
-            "-rn", # Only display messages
-            "-sn", # Don't display the score
-            "--rcfile=src/.pylintrc",
-          ]
-    # Analyze the tests code style and report code that doesn't adhere.
-  - repo: local
-    hooks:
-      - id: pylint
-        name: pylint (python files in tests/)
-        entry: pylint
-        language: system
-        types: [python]
-        files: ^tests/
-        args:
-          [
-            "-rn", # Only display messages
-            "-sn", # Don't display the score
-            "--rcfile=tests/.pylintrc",
-          ]
+        files: ^(src|tests)/
+        # It is recommended to specify the latest version of Python
+        # supported by your project here, or alternatively use
+        # pre-commit's default_language_version, see
+        # https://pre-commit.com/#top_level-default_language_version
+        language_version: python3.10
 
 
     # Make sure Sphinx can build the documentation while explicitly omitting 
@@ -118,11 +100,11 @@ repos:
                   # Note: -M requires next 3 args to be builder, source, output
             "html", # Specify builder
             "./docs", # Source directory of documents
-            "./docs/build/html", # Output directory for rendered documents
+            "./_readthedocs", # Output directory for rendered documents
             "-T", # Show full trace back on exception
             "-E", # Don't use saved env; always read all files
             "-d", # Flag for cached environment and doctrees
-            "./docs/build/doctrees", # Directory
+            "./docs/_build/doctrees", # Directory
             "-D", # Flag to override settings in conf.py
             "exclude_patterns=notebooks/*", # Exclude our notebooks from pre-commit
           ]
