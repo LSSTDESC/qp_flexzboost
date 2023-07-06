@@ -1,6 +1,6 @@
 # .readthedocs.yml
 # Read the Docs configuration file
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+# See  https://docs.readthedocs.io/en/stable/config-file/v2.html for details
 
 # Required
 version: 2
@@ -20,4 +20,4 @@ python:
    - method: pip
      path: .
      extra_requirements:
-        - dev
+       - dev
