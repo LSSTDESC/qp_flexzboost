@@ -4,10 +4,11 @@ from typing import List
 
 import numpy as np
 from flexcode.basis_functions import BasisCoefs
-from qp.factory import add_class
-from qp.pdf_gen import Pdf_rows_gen
+from qp import add_class
+from qp.parameterizations.base import Pdf_rows_gen
 from qp.plotting import get_axes_and_xlims, plot_pdf_on_axes
-from qp.utils import CASE_FACTOR, CASE_PRODUCT, get_eval_case, interpolate_multi_x_y
+from qp.utils.array import CASE_FACTOR, CASE_PRODUCT, get_eval_case
+from qp.utils.interpolation import interpolate_multi_x_y
 from scipy.stats import rv_continuous
 
 
@@ -91,7 +92,7 @@ class FlexzboostGen(Pdf_rows_gen):
 
         # kwargs['shape'] is used to by the parent class to define the total
         # number of PDFs stored in this generator object.
-        kwargs["shape"] = np.asarray(weights).shape[:-1]
+        kwargs["shape"] = np.asarray(weights).shape
         super().__init__(*args, **kwargs)
 
         self._weights = np.asarray(weights)
@@ -921,7 +922,7 @@ class FlexzboostGen(Pdf_rows_gen):
         }
 
 
-flexzboost = FlexzboostGen.create
+flexzboost = FlexzboostGen
 flexzboost_create_from_basis_coef_object = FlexzboostGen.create_from_basis_coef_object
 
 add_class(FlexzboostGen)
