@@ -7,8 +7,7 @@ import numpy as np
 import pytest
 import qp
 from qp.plotting import init_matplotlib
-from qp.test_data import QUANTS
-from qp.test_funcs import assert_all_close, assert_all_small, build_ensemble
+from helpers import assert_all_close, assert_all_small, build_ensemble, QUANTS
 
 from qp_flexzboost.flexzboost_pdf import FlexzboostGen
 
@@ -78,7 +77,7 @@ class TestEnsembleFunctions:
     def test_can_convert_to_interp(self, flexzboost_ensemble):
         """Ensure that the ensemble can be converted to another generator type"""
         interp_ensemble = flexzboost_ensemble.convert_to(qp.interp_gen, xvals=np.linspace(0, 3, 100))
-        assert isinstance(interp_ensemble.dist, qp.interp_pdf.interp_gen)
+        assert isinstance(interp_ensemble.dist, qp.interp_gen)
 
     def test_pdf_sum_matches_cdf(self, flexzboost_ensemble, flexzboost_test_data):
         """Ensure that output CDF makes sense relative to the PDF."""
@@ -192,6 +191,6 @@ class TestEnsembleFunctions:
         flexzboost_ensemble.writeHdf5Chunk(group, 0, flexzboost_ensemble.npdf)
         flexzboost_ensemble.finalizeHdf5Write(fout)
         readens = qp.read("testwrite.hdf5")
-        assert readens.metadata().keys() == flexzboost_ensemble.metadata().keys()
-        assert readens.objdata().keys() == flexzboost_ensemble.objdata().keys()
+        assert readens.metadata.keys() == flexzboost_ensemble.metadata.keys()
+        assert readens.objdata.keys() == flexzboost_ensemble.objdata.keys()
         os.remove("testwrite.hdf5")
