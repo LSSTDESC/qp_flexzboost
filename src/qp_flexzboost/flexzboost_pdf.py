@@ -1,4 +1,5 @@
 """This implements a PDF sub-class specifically for FlexZBoost"""
+
 from enum import Enum
 from typing import List
 
