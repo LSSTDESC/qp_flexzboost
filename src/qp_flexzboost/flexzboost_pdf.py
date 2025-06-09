@@ -401,7 +401,7 @@ class FlexzboostGen(Pdf_rows_gen):
         #     raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
         return self._ycumul.ravel()
-    
+
     def _logcdf(self, x: List[float], row: List[int]) -> List[List[float]]:
         """Return the numerical log CDF, evaluated on the grid, `x`.
 
@@ -421,7 +421,7 @@ class FlexzboostGen(Pdf_rows_gen):
         """
 
         return np.log(self._cdf(x, row))
-    
+
     # pylint: disable-next=arguments-differ
     def _ppf(self, x: List[float], row: List[int]) -> List[List[float]]:
         """Return the numerical PPF, evaluated on the grid, `x`.
