@@ -27,6 +27,7 @@ jobs:
         if [ -f docs/requirements.txt ]; then pip install -r docs/requirements.txt; fi
         pip install .
         pip install .[dev]
+        pip install --upgrade sphinx-autoapi
     - name: Install notebook requirements
       run: |
         sudo apt-get install pandoc

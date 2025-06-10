@@ -1,4 +1,5 @@
 """This implements a PDF sub-class specifically for FlexZBoost"""
+
 from enum import Enum
 from typing import List
 
@@ -392,12 +393,34 @@ class FlexzboostGen(Pdf_rows_gen):
             the resulting y-values corresponding to the input x-values.
         """
         case_idx, xx, _ = get_eval_case(x, row)
-        if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
+        if self._ycumul is None:  # pragma: no cover
             self._compute_ycumul(xx)
-        else:
-            raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
+        # if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
+        #     self._compute_ycumul(xx)
+        # else:
+        #     raise ValueError("Only CASE_PRODUCT and CASE_FACTOR are supported.")
 
         return self._ycumul.ravel()
+
+    def _logcdf(self, x: List[float], row: List[int]) -> List[List[float]]:
+        """Return the numerical log CDF, evaluated on the grid, `x`.
+
+        Parameters
+        ----------
+        x : List[float]
+            The x-values to evaluate the analytical CDFs
+        row : List[int], optional
+            The indices for which numerical CDFs should be generated
+
+        Returns
+        -------
+        List[List[float]]
+            A list of lists corresponding to individual CDF's y-values. Each of
+            the outer lists is a single CDF. The elements of the inner list are
+            the resulting y-values corresponding to the input x-values.
+        """
+
+        return np.log(self._cdf(x, row))
 
     # pylint: disable-next=arguments-differ
     def _ppf(self, x: List[float], row: List[int]) -> List[List[float]]:
