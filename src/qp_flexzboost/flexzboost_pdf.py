@@ -393,8 +393,8 @@ class FlexzboostGen(Pdf_rows_gen):
             the resulting y-values corresponding to the input x-values.
         """
         case_idx, xx, _ = get_eval_case(x, row)
-        if self._ycumul is None:  # pragma: no cover
-            self._compute_ycumul(xx)
+        # if self._ycumul is None:  # pragma: no cover
+        self._compute_ycumul(xx)
         # if case_idx in [CASE_PRODUCT, CASE_FACTOR]:
         #     self._compute_ycumul(xx)
         # else:
